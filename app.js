@@ -41,7 +41,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/tenants", tenantRoutes);
 
 app.use(authMiddleware);
-//app.use(tenantMiddleware);
+app.use(tenantMiddleware);
 
 app.use("/api/pedidos", pedidoRoutes);
 app.use("/api/productos", productoRoutes);

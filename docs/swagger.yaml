@@ -40,6 +40,7 @@ components:
           example: "123456"
         tenantId:
           type: string
+          example: "687846919407b7ae546b3f6f"
 
     LoginResponse:
       type: object
