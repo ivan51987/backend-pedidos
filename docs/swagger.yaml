@@ -1,0 +1,463 @@
+openapi: 3.0.0
+info:
+  title: API Multitenant de Pedidos
+  version: 1.0.0
+  description: Documentación interactiva del sistema de pedidos multitenant
+
+servers:
+  - url: http://localhost:3000
+    description: Servidor local de desarrollo
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        status:
+          type: integer
+        stack:
+          type: string
+
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: ivan@gmail.com
+        password:
+          type: string
+          minLength: 6
+          example: "123456"
+        tenantId:
+          type: string
+
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        usuario:
+          type: object
+          properties:
+            id:
+              type: string
+              example: "687846919407b7ae546b3f72"
+            email:
+              type: string
+              example: ivan@gmail.com
+            rol:
+              type: string
+              enum: [admin, empleado]
+              example: admin
+
+    RegisterInput:
+      type: object
+      required: [nombreUsuario, email, password, role, tenantCodigo]
+      properties:
+        nombreUsuario:
+          type: string
+          description: Nombre completo del usuario
+        email:
+          type: string
+          format: email
+          description: Correo electrónico del usuario
+        password:
+          type: string
+          minLength: 6
+          description: Contraseña del usuario (mínimo 6 caracteres)
+        role:
+          type: string
+          enum: [admin, vendedor]
+          description: Rol asignado al usuario
+        tenantCodigo:
+          type: string
+          description: Código identificador del tenant (empresa o cliente)
+
+
+    NuevoPedido:
+      type: object
+      required: [tipo, items]
+      properties:
+        tipo:
+          type: string
+          enum: [mostrador, para_llevar]
+        cliente:
+          type: string
+        items:
+          type: array
+          items:
+            type: object
+            required: [productoId, cantidad]
+            properties:
+              productoId:
+                type: string
+              cantidad:
+                type: integer
+                minimum: 1
+              precioUnitario:
+                type: number
+                minimum: 0
+
+    Pedido:
+      type: object
+      properties:
+        id:
+          type: string
+        tipo:
+          type: string
+        cliente:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PedidoItem"
+        estado:
+          type: string
+          enum: [en_curso, cerrado]
+        total:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+
+    PedidoItem:
+      type: object
+      properties:
+        productoId:
+          type: string
+        producto:
+          $ref: "#/components/schemas/Producto"
+        cantidad:
+          type: integer
+        precioUnitario:
+          type: number
+        subtotal:
+          type: number
+
+    ProductoInput:
+        type: object
+        required: 
+          - nombre
+          - precio
+        properties:
+          nombre:
+            type: string
+            minLength: 1
+          precio:
+            type: number
+            minimum: 0
+          descripcion:
+            type: string
+
+    Producto:
+      type: object
+      properties:
+        id:
+          type: string
+        nombre:
+          type: string
+        precio:
+          type: number
+        descripcion:
+          type: string
+        tenantId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Auth
+    description: Autenticación de usuarios
+  - name: Pedidos
+    description: Gestión de pedidos
+  - name: Productos
+    description: Gestión de productos
+  - name: Tenants
+    description: Gestión de tenants
+  - name: Dashboard
+    description: Estadísticas y métricas
+  - name: Bitácora
+    description: Registro de actividades
+
+paths:
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Iniciar sesión
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        200:
+          description: Login exitoso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        400:
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        401:
+          description: Credenciales inválidas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Registrar un nuevo usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        201:
+          description: Usuario registrado exitosamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        400:
+          description: Error de validación o usuario existente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/pedidos:
+    post:
+      tags: [Pedidos]
+      summary: Crear un nuevo pedido
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NuevoPedido"
+      responses:
+        201:
+          description: Pedido creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pedido"
+        400:
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        401:
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    get:
+      tags: [Pedidos]
+      summary: Listar pedidos por estado
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: [en_curso, cerrado]
+      responses:
+        200:
+          description: Lista de pedidos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pedido"
+        401:
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/pedidos/{id}/cerrar:
+    patch:
+      tags: [Pedidos]
+      summary: Cerrar un pedido
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Pedido cerrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pedido"
+        404:
+          description: Pedido no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/productos:
+    post:
+      tags: [Productos]
+      summary: Crear producto
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductoInput"
+      responses:
+        201:
+          description: Producto creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Producto"
+        400:
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    get:
+      tags: [Productos]
+      summary: Listar productos
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Lista de productos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Producto"
+        401:
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/dashboard/resumen:
+    get:
+      tags: [Dashboard]
+      summary: Obtener resumen del dashboard
+      security:
+        - bearerAuth: []
+      responses:
+        200:
+          description: Resumen del dashboard
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pedidosHoy:
+                    type: integer
+                  ventasHoy:
+                    type: number
+                  productosActivos:
+                    type: integer
+        401:
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/bitacora:
+    get:
+      tags: [Bitácora]
+      summary: Consultar registros de bitácora
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: desde
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: hasta
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        200:
+          description: Lista de registros de bitácora
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    tenantId:
+                      type: string
+                    usuarioId:
+                      type: string
+                    accion:
+                      type: string
+                    entidad:
+                      type: string
+                    entidadId:
+                      type: string
+                    detalles:
+                      type: object
+                    createdAt:
+                      type: string
+                      format: date-time
+        401:
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
