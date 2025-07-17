@@ -21,7 +21,7 @@ API REST para gestión de pedidos con soporte multitenant, desarrollada con Node
 
 1. Clonar el repositorio:
 
-git clone <url-del-repositorio>
+git clone https://github.com/ivan51987/backend-pedidos.git
 cd backend-pedidos
 
 
